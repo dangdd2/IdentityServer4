@@ -39,23 +39,43 @@ namespace IdentityServer
             // uncomment, if you want to add an MVC-based UI
             services.AddControllersWithViews();
 
-            var builder = services.AddIdentityServer(options =>
-            {
-                // see https://identityserver4.readthedocs.io/en/latest/topics/resources.html
-                options.EmitStaticAudienceClaim = true;
-            })
-                .AddInMemoryIdentityResources(Config.IdentityResources)
-                .AddInMemoryApiScopes(Config.ApiScopes)
-                .AddInMemoryClients(Config.Clients)
-                .AddTestUsers(Config.Users);
+            //var builder = services.AddIdentityServer(options =>
+            //{
+            //    // see https://identityserver4.readthedocs.io/en/latest/topics/resources.html
+            //    options.EmitStaticAudienceClaim = true;
+            //})
+            //    .AddInMemoryIdentityResources(Config.IdentityResources)
+            //    .AddInMemoryApiScopes(Config.ApiScopes)
+            //    .AddInMemoryClients(Config.Clients)
+            //    .AddTestUsers(Config.Users);
 
+            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+            const string connectionString = @"Data Source=.;Initial Catalog=IdentityServer4.Quickstart.EntityFramework;Integrated Security=True;";
+            
+            services.AddIdentityServer()
+                .AddTestUsers(Config.Users)
+                .AddConfigurationStore(options =>
+                {
+                    options.ConfigureDbContext = b => b.UseSqlServer(connectionString,
+                        sql => sql.MigrationsAssembly(migrationsAssembly));
+                })
+                .AddOperationalStore(options =>
+                {
+                    options.ConfigureDbContext = b => b.UseSqlServer(connectionString,
+                        sql => sql.MigrationsAssembly(migrationsAssembly));
+                })
 
-            builder.AddDeveloperSigningCredential();
+                .AddDeveloperSigningCredential(); 
+
+            //builder.AddDeveloperSigningCredential();
         }
 
         public void Configure(IApplicationBuilder app)
         {
-           
+            // this will do the initial DB population
+            InitializeDatabase(app);
+
+
             if (Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -75,6 +95,43 @@ namespace IdentityServer
             });
         }
 
+
+        private void InitializeDatabase(IApplicationBuilder app)
+        {
+            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                serviceScope.ServiceProvider.GetRequiredService<PersistedGrantDbContext>().Database.Migrate();
+
+                var context = serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
+                context.Database.Migrate();
+                if (!context.Clients.Any())
+                {
+                    foreach (var client in Config.Clients)
+                    {
+                        context.Clients.Add(client.ToEntity());
+                    }
+                    context.SaveChanges();
+                }
+
+                if (!context.IdentityResources.Any())
+                {
+                    foreach (var resource in Config.IdentityResources)
+                    {
+                        context.IdentityResources.Add(resource.ToEntity());
+                    }
+                    context.SaveChanges();
+                }
+
+                if (!context.ApiScopes.Any())
+                {
+                    foreach (var resource in Config.ApiScopes)
+                    {
+                        context.ApiScopes.Add(resource.ToEntity());
+                    }
+                    context.SaveChanges();
+                }
+            }
+        }
 
     }
 }
