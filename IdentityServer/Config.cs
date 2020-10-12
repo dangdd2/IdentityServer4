@@ -73,7 +73,7 @@ namespace IdentityServer
                     {
                         IdentityServerConstants.StandardScopes.OpenId,
                         IdentityServerConstants.StandardScopes.Profile,
-                        ."api1" // MVCClient call API 'api1'
+                        "api1" // MVCClient call API 'api1'
                     }
                 }
 

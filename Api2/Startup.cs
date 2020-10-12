@@ -31,7 +31,7 @@ namespace Api2
             services.AddAuthentication("Bearer")
                 .AddJwtBearer("Bearer", options =>
                 {
-                    options.Authority = "https://localhost:5001";
+                    options.Authority = "https://localhost:5000";
 
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
